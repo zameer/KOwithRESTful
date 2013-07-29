@@ -1,0 +1,87 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<input type="text" data-bind="value: Name" /><br />
+<button class="btn btn-primary" type="button" data-bind="click: AddProduct">Display</button>
+<br />
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Product Name</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody data-bind="foreach: Products">
+        <tr>
+            <td data-bind="text: Name"></td>
+            <td data-bind="text: Quantity"></td>
+            <td data-bind="text: UnitPrice"></td>
+            <td>
+                <button class="btn btn-danger" data-bind="click: $root.Remove">X</button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+@section scripts{
+    <script src="~/Scripts/knockout-2.3.0.js"></script>
+    <script src="~/Scripts/knockout.validation.js"></script>
+    <script src="~/Scripts/knockout.mapping-latest.js"></script>
+    <script type="text/javascript">
+        var ProductModel = function () {
+            var self = this;
+            var baseUri = "http://localhost:52703/api";
+
+            self.Name = ko.observable().extend({ required: { message: 'Name required', params: true } });
+
+            self.Products = ko.observableArray();
+
+            $.getJSON(baseUri + '/Products', function (data) {
+                self.Products(ko.utils.arrayMap(data, function (product) {
+                    var objProduct = {
+                        ProductId: product.ProductId,
+                        Name: ko.observable(product.Name),
+                        Quantity: product.Quantity,
+                        UnitPrice: product.UnitPrice
+                    }
+                    return objProduct;
+                }));
+            });
+
+            self.Remove = function (item) {
+                if (confirm('Are you sure you want to delete this ' + item.Name() + '?')) {
+                    $.ajax({ type: "DELETE", url: baseUri + '/Products/' + item.ProductId })
+                           .done(function () {
+                               self.Products.remove(item);
+                           });
+                };
+            };
+
+            self.ProductErrors = ko.validation.group({ Name: self.Name });
+            if (self.ProductErrors().length != 0) {
+                alert('Please correct error.');
+            };
+
+            self.AddProduct = function () {
+                var objEmployee = {
+                    ProductId: 6,
+                    Name: self.Name,
+                    Quantity: 120,
+                    UnitPrice: 89.6
+                };
+                $.post(baseUri + '/Products', objEmployee, null, "json")
+                .done(function () {
+                    // Add the new product to the view-model.
+                    self.Products.push(objEmployee);
+                });
+            };
+        };
+
+        $(function () {
+            ko.applyBindings(new ProductModel);
+        });
+    </script>
+}
